@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import pool from './config/db.js';
+import { initDB } from "./data/initDB.js";
 
 dotenv.config();
 
@@ -10,6 +11,15 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+
+const initializeDatabase = async () => {
+  if (process.env.INIT_DB === "true") {
+    console.log("⚙️ INIT_DB flag is true — initializing database...");
+    await initDB();
+  } else {
+    console.log("⏭️ Skipping DB initialization (INIT_DB flag not set)");
+  }
+};
 
 app.get('/', async (req, res) => {  
     try {
@@ -21,6 +31,16 @@ app.get('/', async (req, res) => {
     }
 })
 
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
+initializeDatabase()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`✅ Server is running on http://localhost:${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error("❌ Server failed to start:", err);
+    process.exit(1);
+  });
+
+import authRoutes from "./routes/authRoutes.js";
+app.use("/api/auth", authRoutes);
