@@ -82,7 +82,6 @@ export const login = async (req, res) => {
   }
 };
 
-// REFRESH ACCESS TOKEN
 export const refreshToken = async (req, res) => {
   const { refresh_token } = req.body;
   if (!refresh_token)
@@ -126,7 +125,6 @@ export const refreshToken = async (req, res) => {
   }
 };
 
-// LOGOUT
 export const logout = async (req, res) => {
   try {
     const { user_id } = req.user;
