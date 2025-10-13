@@ -14,7 +14,8 @@ export const signup = async (req, res) => {
 
   try {
     const existing = await findUserByEmail(email);
-    if (existing) return res.status(409).json({ error: "Email already registered" });
+    if (existing)
+      return res.status(409).json({ error: "Email already registered" });
 
     const tenantRes = await pool.query(
       "INSERT INTO tenants(name) VALUES($1) RETURNING tenant_id",
@@ -75,7 +76,9 @@ export const login = async (req, res) => {
 
     delete user.password;
     delete user.refresh_token;
-    res.status(200).json({ user, access_token: accessToken, refresh_token: refreshToken });
+    res
+      .status(200)
+      .json({ user, access_token: accessToken, refresh_token: refreshToken });
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({ error: "Server error" });
@@ -134,6 +137,43 @@ export const logout = async (req, res) => {
     res.status(200).json({ message: "Logged out successfully" });
   } catch (err) {
     console.error("Logout error:", err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Internal Server error" });
+  }
+};
+
+export const googleAuthCallback = async (req, res) => {
+  try {
+    const user = req.user;
+    const payload = {
+      user_id: user.user_id,
+      tenant_id: user.tenant_id,
+      email: user.email,
+      role: user.role,
+    };
+
+    const accessToken = generateAccessToken(payload);
+    const refreshToken = generateRefreshToken(payload);
+
+    await pool.query("UPDATE users SET refresh_token=$1 WHERE user_id=$2", [
+      refreshToken,
+      user.user_id,
+    ]);
+
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      sameSite: "strict",
+      maxAge: 15 * 60 * 1000,
+    });
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.redirect(`${process.env.FRONTEND_URL}/`);
+  } catch (err) {
+    console.error("Google callback error:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 };

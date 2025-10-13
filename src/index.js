@@ -1,16 +1,26 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import pool from './config/db.js';
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import pool from "./config/db.js";
 import { initDB } from "./data/initDB.js";
+import passport from "passport";
+import "./config/passport.js";
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173/",
+    ],
+    credentials: true, // allow cookies (required for JWT httpOnly cookies)
+  })
+);
 app.use(express.json());
+app.use(passport.initialize());
 
 const initializeDatabase = async () => {
   if (process.env.INIT_DB === "true") {
@@ -21,15 +31,15 @@ const initializeDatabase = async () => {
   }
 };
 
-app.get('/', async (req, res) => {  
-    try {
-        const result = await pool.query('SELECT NOW()');
-        res.json({ message: 'Database connected', time: result.rows[0] });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Database connection error' });
-    }
-})
+app.get("/", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT NOW()");
+    res.json({ message: "Database connected", time: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Database connection error" });
+  }
+});
 
 initializeDatabase()
   .then(() => {

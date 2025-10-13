@@ -25,6 +25,8 @@ CREATE TABLE IF NOT EXISTS users (
     timezone        VARCHAR(100) DEFAULT 'UTC',
     role            VARCHAR(50) DEFAULT 'owner',
     refresh_token   TEXT,
+    google_id      VARCHAR(255) UNIQUE,
+    profile_pic     TEXT,
     created_at      TIMESTAMPTZ DEFAULT now(),
     updated_at      TIMESTAMPTZ DEFAULT now()
 );
