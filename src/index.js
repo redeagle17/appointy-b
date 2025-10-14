@@ -53,4 +53,7 @@ initializeDatabase()
   });
 
 import authRoutes from "./routes/authRoutes.js";
+import calendarRoutes from "./routes/calendarRoutes.js";
+
 app.use("/api/auth", authRoutes);
+app.use("/api/calendar", calendarRoutes);

@@ -171,6 +171,7 @@ export const googleAuthCallback = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
+    // TOOD: Change the URL to your frontend when the the callback is successful
     res.redirect(`${process.env.FRONTEND_URL}/`);
   } catch (err) {
     console.error("Google callback error:", err);
