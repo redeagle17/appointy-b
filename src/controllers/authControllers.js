@@ -34,13 +34,28 @@ export const signup = async (req, res) => {
     };
 
     const refreshToken = generateRefreshToken(payload);
+    const accessToken = generateAccessToken(payload);
+
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      sameSite: "strict",
+      maxAge: 15 * 60 * 1000,
+    });
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
 
     await pool.query("UPDATE users SET refresh_token=$1 WHERE user_id=$2", [
       refreshToken,
       user.user_id,
     ]);
 
-    res.status(201).json({ user, refresh_token: refreshToken });
+    res
+      .status(201)
+      .json({ user, refresh_token: refreshToken, access_token: accessToken });
   } catch (err) {
     console.error("Signup error:", err);
     res.status(500).json({ error: "Server error" });
@@ -69,6 +84,18 @@ export const login = async (req, res) => {
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);
 
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      sameSite: "strict",
+      maxAge: 15 * 60 * 1000,
+    });
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
     await pool.query("UPDATE users SET refresh_token=$1 WHERE user_id=$2", [
       refreshToken,
       user.user_id,
@@ -78,7 +105,7 @@ export const login = async (req, res) => {
     delete user.refresh_token;
     res
       .status(200)
-      .json({ user, access_token: accessToken, refresh_token: refreshToken });
+      .json({ user, refresh_token: refreshToken, access_token: accessToken });
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({ error: "Server error" });
@@ -172,7 +199,12 @@ export const googleAuthCallback = async (req, res) => {
     });
 
     // TOOD: Change the URL to your frontend when the the callback is successful
-    res.redirect(`${process.env.FRONTEND_URL}/`);
+    const redirectPath = user.google_calendar_connected
+      ? "/dashboard"
+      : "/connect-calendar";
+    console.log("THE REDIRECT PATH IS", redirectPath);
+
+    res.redirect(`${process.env.FRONTEND_URL}${redirectPath}`);
   } catch (err) {
     console.error("Google callback error:", err);
     res.status(500).json({ error: "Internal server error" });

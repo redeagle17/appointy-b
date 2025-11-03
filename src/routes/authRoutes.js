@@ -7,6 +7,7 @@ import {
   googleAuthCallback,
 } from "../controllers/authControllers.js";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
+import { googleAuthMiddleware } from "../middlewares/googleAuthMiddleware.js";
 import passport from "passport";
 import "../config/passport.js";
 
@@ -23,13 +24,6 @@ router.get(
     session: false,
   })
 );
-router.get(
-  "/google/callback",
-  passport.authenticate("google", {
-    session: false,
-    failureRedirect: "http://localhost:5143/",
-  }),
-  googleAuthCallback
-);
+router.get("/google/callback", googleAuthMiddleware, googleAuthCallback);
 
 export default router;

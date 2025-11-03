@@ -51,9 +51,8 @@ export const googleCalendarCallback = async (req, res) => {
         state
       ]
     );
-    console.log("----------------------SUCCESSFUL--------------------------");
     
-    // res.redirect(`${process.env.FRONTEND_URL}/onboarding/calendar-connected`);
+    // res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
   } catch (err) {
     console.error("Google Calendar connection error:", err);
     res.status(500).json({ error: "Failed to connect calendar" });

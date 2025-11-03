@@ -1,5 +1,5 @@
--- DROP TABLE IF EXISTS users CASCADE;
--- DROP TABLE IF EXISTS tenants CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS tenants CASCADE;
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- =============================
@@ -28,5 +28,10 @@ CREATE TABLE IF NOT EXISTS users (
     google_id      VARCHAR(255) UNIQUE,
     profile_pic     TEXT,
     created_at      TIMESTAMPTZ DEFAULT now(),
-    updated_at      TIMESTAMPTZ DEFAULT now()
+    updated_at      TIMESTAMPTZ DEFAULT now(),
+    google_calendar_access_token TEXT,
+    google_calendar_refresh_token TEXT,
+    google_calendar_token_expires TIMESTAMPTZ,
+    google_calendar_connected BOOLEAN DEFAULT false,
+    google_calendar_email VARCHAR(255)
 );
