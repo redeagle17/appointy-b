@@ -5,6 +5,7 @@ import pool from "./config/db.js";
 import { initDB } from "./data/initDB.js";
 import passport from "passport";
 import "./config/passport.js";
+import cookieParser from "cookie-parser";
 
 dotenv.config();
 
@@ -31,6 +32,8 @@ const initializeDatabase = async () => {
   }
 };
 
+app.use(cookieParser());
+
 app.get("/", async (req, res) => {
   try {
     const result = await pool.query("SELECT NOW()");
@@ -44,11 +47,11 @@ app.get("/", async (req, res) => {
 initializeDatabase()
   .then(() => {
     app.listen(PORT, () => {
-      console.log(`✅ Server is running on http://localhost:${PORT}`);
+      console.log(`Server is running on http://localhost:${PORT}`);
     });
   })
   .catch((err) => {
-    console.error("❌ Server failed to start:", err);
+    console.error("Server failed to start:", err);
     process.exit(1);
   });
 

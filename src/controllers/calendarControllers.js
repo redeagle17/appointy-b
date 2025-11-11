@@ -10,18 +10,30 @@ const SCOPES = [
 ];
 
 export const connectGoogleCalendar = async (req, res) => {
-  const { user_id } = req.query;
-  const oauth2Client = getOAuthClient();
+  try {
+    const oauth2Client = getOAuthClient();
 
-  const authUrl = oauth2Client.generateAuthUrl({
-    access_type: "offline",
-    prompt: "consent",
-    scope: SCOPES,
-    state: user_id,
-  });
-  console.log("THE AUTH URL IS", authUrl);
-  
-  res.redirect(authUrl);
+    const user_id = req.user.user_id;
+    if (!user_id) {
+      return res.status(400).json({ error: "Missing user ID" });
+    }
+
+    const authUrl = oauth2Client.generateAuthUrl({
+      access_type: "offline",
+      prompt: "consent",
+      scope: SCOPES,
+      state: user_id,
+    });
+
+    if (req.headers.accept?.includes("application/json")) {
+      return res.json({ authUrl });
+    }
+
+    return res.redirect(authUrl);
+  } catch (error) {
+    console.error("Error generating Google OAuth URL:", error);
+    res.status(500).json({ error: "Failed to generate Google Auth URL" });
+  }
 };
 
 export const googleCalendarCallback = async (req, res) => {

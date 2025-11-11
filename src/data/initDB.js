@@ -8,10 +8,10 @@ const schemaPath = path.join(__dirname, "src", "data", "schema.sql");
 export const initDB = async () => {
   try {
     const sql = fs.readFileSync(schemaPath, "utf-8");
-    console.log("🚀 Executing schema.sql...");
+    console.log("Executing schema.sql...");
     await pool.query(sql);
-    console.log("✅ Database initialized successfully (no duplicates created)");
+    console.log("Database initialized successfully (no duplicates created)");
   } catch (error) {
-    console.error("❌ Error initializing database:", error);
+    console.error("Error initializing database:", error);
   }
 };
