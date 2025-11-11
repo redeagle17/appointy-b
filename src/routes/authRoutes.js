@@ -17,13 +17,15 @@ router.post("/signup", signup);
 router.post("/login", login);
 router.post("/refresh", authMiddleware, refreshToken);
 router.post("/logout", authMiddleware, logout);
-router.get(
-  "/google",
+router.get("/google", (req, res, next) => {
+  const mode = req.query.mode || "login";
   passport.authenticate("google", {
     scope: ["profile", "email"],
     session: false,
-  })
-);
+    state: mode, 
+    prompt: 'select_account',
+  })(req, res, next);
+});
 router.get("/google/callback", googleAuthMiddleware, googleAuthCallback);
 
 export default router;

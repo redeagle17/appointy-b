@@ -11,87 +11,91 @@ passport.use(
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       callbackURL: process.env.GOOGLE_CALLBACK_URL,
-      passReqToCallback: true,
+      passReqToCallback: true, // gives us access to req.query.state (our mode)
     },
     async (req, accessToken, refreshToken, profile, done) => {
       try {
         const email = profile.emails?.[0]?.value;
         const name = profile.displayName;
-        console.log("THE EMAIL IS ---", email);
+        const mode = req.query.state || "login"; // either "signup" or "login"
+        console.log("🌀 Google OAuth Mode:", mode);
+        console.log("📧 Email:", email);
 
-        const existingUser = await pool.query(
+        // 1️⃣ Check if user already exists
+        const existingUserResult = await pool.query(
           "SELECT * FROM users WHERE email=$1",
           [email]
         );
-        console.log("THE EXISTING USER IS ---", existingUser.rows);
-        // If user already exists, return error
-        if (existingUser.rows.length > 0) {
-          const error = new Error("User already exists");
-          error.code = "USER_EXISTS";
-          error.user = existingUser.rows[0];
+        const existingUser = existingUserResult.rows[0];
+
+        // 2️⃣ Handle based on mode
+        if (mode === "signup") {
+          if (existingUser) {
+            const error = new Error("User already exists");
+            error.code = "USER_EXISTS";
+            req.authError = "USER_EXISTS";
+            return done(error, null);
+          }
+
+          // Create a new tenant for the user
+          const tenantRes = await pool.query(
+            "INSERT INTO tenants(name) VALUES($1) RETURNING tenant_id",
+            [name || email.split("@")[0]]
+          );
+          const tenantId = tenantRes.rows[0].tenant_id;
+
+          const newUser = await pool.query(
+            `INSERT INTO users (tenant_id, name, email, password)
+             VALUES ($1, $2, $3, NULL)
+             RETURNING *`,
+            [tenantId, name, email]
+          );
+
+          const createdUser = newUser.rows[0];
+          console.log("✅ New user created:", createdUser.email);
+
+          if (req) req._passportUser = createdUser;
+          return done(null, createdUser);
+        }
+
+        if (mode === "login") {
+          if (!existingUser) {
+            const error = new Error("User not found");
+            error.code = "USER_NOT_FOUND";
+            return done(error, null);
+          }
+
+          console.log("✅ Existing user logged in:", existingUser.email);
+          if (req) req._passportUser = existingUser;
+          return done(null, existingUser);
+        }
+
+        // 3️⃣ Default fallback
+        console.warn("⚠️ Unknown mode received, defaulting to login.");
+        if (existingUser) {
+          return done(null, existingUser);
+        } else {
+          const error = new Error("User not found");
+          error.code = "USER_NOT_FOUND";
+          req.authError = "USER_NOT_FOUND";
           return done(error, null);
         }
-
-        // Create new user if they don't exist
-        const tenantRes = await pool.query(
-          "INSERT INTO tenants(name) VALUES($1) RETURNING tenant_id",
-          [name || email.split("@")[0]]
-        );
-        const tenantId = tenantRes.rows[0].tenant_id;
-
-        const newUser = await pool.query(
-          `INSERT INTO users (tenant_id, name, email, password)
-           VALUES ($1, $2, $3, NULL)
-           RETURNING *`,
-          [tenantId, name, email]
-        );
-
-        // Validate that user was created successfully
-        if (!newUser.rows || newUser.rows.length === 0) {
-          const error = new Error("Failed to create user");
-          return done(error, null);
-        }
-
-        const createdUser = newUser.rows[0];
-        console.log("=== User Created Successfully ===");
-        console.log("Created user object:", createdUser);
-        console.log("User ID:", createdUser?.user_id);
-        console.log("Email:", createdUser?.email);
-        console.log("About to call done(null, createdUser)...");
-
-        // Store user in req object for middleware access (workaround for Express 5.x compatibility)
-        if (req) {
-          req._passportUser = createdUser;
-        }
-
-        return done(null, createdUser);
       } catch (err) {
-        console.error("Google OAuth error:", err);
+        console.error("🔥 Google OAuth error:", err);
         return done(err, null);
       }
     }
   )
 );
 
-// Serialization functions (required even with session: false in some Passport versions)
 passport.serializeUser((user, done) => {
-  console.log("=== Serialize User ===");
-  console.log("User being serialized:", user);
   done(null, user.user_id);
 });
 
 passport.deserializeUser(async (id, done) => {
-  console.log("=== Deserialize User ===");
-  console.log("User ID:", id);
   try {
-    const result = await pool.query("SELECT * FROM users WHERE user_id = $1", [
-      id,
-    ]);
-    if (result.rows.length > 0) {
-      done(null, result.rows[0]);
-    } else {
-      done(new Error("User not found"), null);
-    }
+    const result = await pool.query("SELECT * FROM users WHERE user_id=$1", [id]);
+    done(null, result.rows[0]);
   } catch (err) {
     done(err, null);
   }

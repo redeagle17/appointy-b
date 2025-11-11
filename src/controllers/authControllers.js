@@ -14,8 +14,7 @@ export const signup = async (req, res) => {
 
   try {
     const existing = await findUserByEmail(email);
-    if (existing)
-      return res.status(409).json({ error: "Email already registered" });
+    if (existing) return res.status(409).json({ error: "User already exists" });
 
     const tenantRes = await pool.query(
       "INSERT INTO tenants(name) VALUES($1) RETURNING tenant_id",
@@ -69,7 +68,7 @@ export const login = async (req, res) => {
 
   try {
     const user = await findUserByEmail(email);
-    if (!user) return res.status(401).json({ error: "Invalid credentials" });
+    if (!user) return res.status(404).json({ error: "User not found" });
 
     const isValid = await comparePassword(password, user.password);
     if (!isValid) return res.status(401).json({ error: "Invalid credentials" });
@@ -171,6 +170,14 @@ export const logout = async (req, res) => {
 export const googleAuthCallback = async (req, res) => {
   try {
     const user = req.user;
+    const mode = req.query.state || req.query.mode || "login";
+
+    if (!user) {
+      return res
+        .status(401)
+        .json({ error: "Authentication failed - no user found" });
+    }
+
     const payload = {
       user_id: user.user_id,
       tenant_id: user.tenant_id,
@@ -186,27 +193,37 @@ export const googleAuthCallback = async (req, res) => {
       user.user_id,
     ]);
 
+    // Set cookies
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
       sameSite: "strict",
-      maxAge: 15 * 60 * 1000,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 15 * 60 * 1000, // 15 minutes
     });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
-    // TOOD: Change the URL to your frontend when the the callback is successful
-    const redirectPath = user.google_calendar_connected
-      ? "/dashboard"
-      : "/connect-calendar";
-    console.log("THE REDIRECT PATH IS", redirectPath);
+    let redirectPath = "";
 
-    res.redirect(`${process.env.FRONTEND_URL}${redirectPath}`);
+    if (mode === "signup") {
+      redirectPath = "/connect-calendar";
+    } else if (mode === "login") {
+      redirectPath = user.google_calendar_connected
+        ? "/dashboard"
+        : "/connect-calendar";
+    } else {
+      redirectPath = "/dashboard";
+    }
+
+    console.log("Redirecting user to:", redirectPath);
+    return res.redirect(`${process.env.FRONTEND_URL}${redirectPath}`);
   } catch (err) {
     console.error("Google callback error:", err);
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
