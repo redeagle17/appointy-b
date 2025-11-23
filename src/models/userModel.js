@@ -15,3 +15,11 @@ export const createUser = async (tenantId, name, email, hashedPassword, timezone
   const result = await pool.query(query, [tenantId, name, email, hashedPassword, timezone]);
   return result.rows[0];
 };
+
+export const findUserById = async (user_id) => {
+  const result = await pool.query(
+    "SELECT * FROM users WHERE user_id=$1",
+    [user_id]
+  );
+  return result.rows[0] || null;
+};
